@@ -33,36 +33,36 @@ double targetFunction(double x) {
 
 
 double trapezoidalIntegral(double a, double b, int n, int tn, const std::function<double(double)> &f) {
-    double h = (b - a) / static_cast<double>(n);  
+    double h = (b - a) / static_cast<double>(n);
+    std::vector<double> partialSums(tn, 0.0);
     std::vector<std::thread> threads;
-    std::vector<double> partialSums(tn, 0.0);      
 
-    
+    int chunkSize = n / tn;
+
     for (int t = 0; t < tn; ++t) {
-        threads.emplace_back([=, &partialSums]() {
-            int chunkSize = n / tn;
-            int startIdx = t * chunkSize + 1;
-            int endIdx = (t + 1) * chunkSize;
+        int startIdx = t * chunkSize;
+        int endIdx = startIdx + chunkSize;
 
+        threads.emplace_back([=, &partialSums, &f]() {
             double localSum = 0.0;
             for (int i = startIdx; i < endIdx; ++i) {
-                double x = a + i * h;
-                localSum += f(x);
+                double x0 = a + i * h;
+                double x1 = a + (i + 1) * h;
+                localSum += ((f(x0) + f(x1)) / 2.0)*h;
             }
             partialSums[t] = localSum;
         });
     }
 
-    
     for (auto &thread : threads) {
         thread.join();
     }
 
-    
     double totalSum = std::accumulate(partialSums.begin(), partialSums.end(), 0.0);
-    totalSum += (f(a) + f(b)) / 2.0;
     return totalSum * h;
 }
+
+
 
 
 int main(int argc, char* argv[]) {
