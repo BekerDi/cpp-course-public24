@@ -48,7 +48,7 @@ double trapezoidalIntegral(double a, double b, int n, int tn, const std::functio
             for (int i = startIdx; i < endIdx; ++i) {
                 double x0 = a + i * h;
                 double x1 = a + (i + 1) * h;
-                localSum += ((f(x0) + f(x1)) / 2.0)*h;
+                localSum += (f(x0) + f(x1)) / 2.0;
             }
             partialSums[t] = localSum;
         });
