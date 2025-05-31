@@ -16,51 +16,82 @@
  * https://habr.com/ru/articles/420867/
  */
 
-#include <cmath>
-#include <functional>
-#include <numeric>
+
+#include <iostream>
 #include <vector>
 #include <thread>
-#include <iostream>
-#include <algorithm>
+#include <functional>
+#include <cmath>
 #include <iomanip>
+#include <numeric>
+#include <stdexcept>
 
 
-class Integral {
-private:
-    int a, b, n, tn;
+double targetFunction(double x) {
+    return std::sqrt(1 + std::exp(x));
+}
 
-public:
-    Integral(int& argc, char** argv) {
+
+double trapezoidalIntegral(double a, double b, int n, int tn, const std::function<double(double)> &f) {
+    double h = (b - a) / static_cast<double>(n);  
+    std::vector<std::thread> threads;
+    std::vector<double> partialSums(tn, 0.0);      
+
+    
+    for (int t = 0; t < tn; ++t) {
+        threads.emplace_back([=, &partialSums]() {
+            int chunkSize = n / tn;
+            int startIdx = t * chunkSize + 1;
+            int endIdx = (t + 1) * chunkSize;
+
+            double localSum = 0.0;
+            for (int i = startIdx; i < endIdx; ++i) {
+                double x = a + i * h;
+                localSum += f(x);
+            }
+            partialSums[t] = localSum;
+        });
+    }
+
+    
+    for (auto &thread : threads) {
+        thread.join();
+    }
+
+    
+    double totalSum = std::accumulate(partialSums.begin(), partialSums.end(), 0.0);
+    totalSum += (f(a) + f(b)) / 2.0;
+    return totalSum * h;
+}
+
+
+int main(int argc, char* argv[]) {
+    try {
         if (argc != 5) {
-            throw std::invalid_argument("Wrong number of arguments");
+            throw std::invalid_argument("Expected 4 arguments: a b n tn");
         }
-        a  = std::stoi(argv[1]);
-        b  = std::stoi(argv[2]);
-        n  = std::stoi(argv[3]);
-        tn = std::stoi(argv[4]);
+
+        int a = std::stoi(argv[1]);
+        int b = std::stoi(argv[2]);
+        int n = std::stoi(argv[3]);
+        int tn = std::stoi(argv[4]);
+
+
+        if (a < 0 || b < 0 || a > 50 || b > 50 || a >= b) {
+            throw std::invalid_argument("Нарушены границы отрезка [a, b]");
+        }
+        if (n <= 0 || tn <= 0 || n % tn != 0) {
+            throw std::invalid_argument("n должно целочисленно делиться на tn");
+        }
+
+        
+        double result = trapezoidalIntegral(a, b, n, tn, targetFunction);
+        std::cout << std::fixed << std::setprecision(4) << result << '\n';
+    }
+    catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << '\n';
+        return 1;
     }
 
-
-    static double integralFunction(double x) {
-        // тут нужно реализовать функцию интеграла S(a, b) = (1+e^x)^0.5 dx
-        return 0;
-    }
-
-
-    double calculateIntegral() {
-        // в зависимости от количество потоков (tn) реализуйте подсчёт интеграла
-        return 0;
-    }
-
-};
-
-
-
-int main(int argc, char** argv)
-{
-    auto i = Integral(argc, argv);
-    std::cout << std::fixed << std::setprecision (4);
-    std::cout << i.calculateIntegral() << std::endl;
     return 0;
 }
